@@ -78,6 +78,49 @@ def results():
         'last_scan': _cache['last_scan'],
         'count': len(_cache['results']),
     })
-
+@app.route('/api/debug_raw')
+def debug_raw():
+    import requests
+    results = {}
+    
+    # 測 PTT
+    try:
+        r = requests.get(
+            'https://www.ptt.cc/bbs/Stock/index.html',
+            headers={'User-Agent': 'Mozilla/5.0', 'Cookie': 'over18=1'},
+            timeout=10
+        )
+        results['ptt_status'] = r.status_code
+        results['ptt_len'] = len(r.text)
+        results['ptt_preview'] = r.text[:300]
+    except Exception as e:
+        results['ptt_error'] = str(e)
+    
+    # 測 Dcard
+    try:
+        r = requests.get(
+            'https://www.dcard.tw/service/api/v2/forums/stock/posts?limit=5',
+            headers={'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.dcard.tw/'},
+            timeout=10
+        )
+        results['dcard_status'] = r.status_code
+        results['dcard_len'] = len(r.text)
+        results['dcard_preview'] = r.text[:300]
+    except Exception as e:
+        results['dcard_error'] = str(e)
+    
+    # 測 Reddit
+    try:
+        r = requests.get(
+            'https://www.reddit.com/r/CryptoCurrency/new.json?limit=5',
+            headers={'User-Agent': 'crypto-monitor/1.0'},
+            timeout=10
+        )
+        results['reddit_status'] = r.status_code
+        results['reddit_len'] = len(r.text)
+    except Exception as e:
+        results['reddit_error'] = str(e)
+    
+    return jsonify(results)
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
