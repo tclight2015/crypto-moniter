@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>韭菜雷達 — 跨平台監控</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+TC:wght@300;400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #b5f23d;
+    --accent2: #ff4d4d;
+    --text: #e8e8e8;
+    --muted: #555;
+    --ptt: #ff6b35;
+    --dcard: #e84393;
+    --reddit: #ff4500;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* grid noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(181,242,61,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(181,242,61,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--muted); }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .header-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: auto;
+    display: flex; gap: 16px; align-items: center;
+  }
+
+  .main { position: relative; z-index: 1; display: flex; height: calc(100vh - 57px); }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Keywords */
+  .keyword-input-wrap { display: flex; gap: 8px; margin-bottom: 10px; }
+  .keyword-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 10px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .keyword-input:focus { border-color: var(--accent); }
+  .btn-add {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 7px 12px;
+    font-weight: 700;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-add:hover { opacity: 0.8; }
+
+  .keywords-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .keyword-tag {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+    cursor: default;
+  }
+  .keyword-tag .remove {
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .keyword-tag .remove:hover { color: var(--accent2); }
+
+  /* Platform toggles */
+  .platform-list { display: flex; flex-direction: column; gap: 8px; }
+  .platform-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .platform-item.active { border-color: var(--accent); }
+  .platform-name { font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .platform-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .toggle {
+    width: 32px; height: 18px;
+    background: var(--border);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: left 0.2s;
+  }
+  .toggle.on::after { left: 17px; }
+
+  /* Scan button */
+  .btn-scan {
+    margin: 16px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-scan:hover { background: var(--accent); color: #000; }
+  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-scan.scanning { animation: scanpulse 1s infinite; }
+  @keyframes scanpulse {
+    0%,100% { border-color: var(--accent); }
+    50% { border-color: var(--muted); }
+  }
+
+  /* Stats */
+  .stats { display: flex; gap: 8px; padding: 0 16px 16px; }
+  .stat { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+  .stat-num { font-family: 'Space Mono', monospace; font-size: 20px; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Feed */
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .feed-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .filter-tabs { display: flex; gap: 4px; }
+  .tab {
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+  .sort-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+
+  /* Post card */
+  .post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease;
+  }
+  .post-card:hover { border-color: #333; transform: translateX(2px); }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .post-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .platform-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .badge-ptt { background: rgba(255,107,53,0.15); color: var(--ptt); }
+  .badge-dcard { background: rgba(232,67,147,0.15); color: var(--dcard); }
+  .badge-reddit { background: rgba(255,69,0,0.15); color: var(--reddit); }
+
+  .post-author { font-size: 12px; color: var(--muted); }
+  .post-time { font-size: 11px; color: var(--muted); margin-left: auto; font-family: 'Space Mono', monospace; }
+
+  .post-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .post-preview {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post-footer {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .keyword-hits { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  .hit-tag {
+    background: rgba(181,242,61,0.1);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .btn-open {
+    font-size: 12px;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid rgba(181,242,61,0.3);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: 'Noto Sans TC', sans-serif;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-open:hover { background: rgba(181,242,61,0.1); }
+
+  /* Saved */
+  .btn-save {
+    background: none; border: none;
+    color: var(--muted); font-size: 16px;
+    cursor: pointer; padding: 0 4px;
+    transition: color 0.2s;
+  }
+  .btn-save:hover, .btn-save.saved { color: #ffd700; }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--muted); gap: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    text-align: center;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+
+  /* Loading */
+  .loading-bar {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: loadingMove 1s infinite;
+    display: none;
+  }
+  .loading-bar.active { display: block; }
+  @keyframes loadingMove {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .feed-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="status-dot"></div>
+  <div class="logo">韭菜雷達 <span>// LEEK RADAR</span></div>
+  <div class="header-meta">
+    <span id="last-scan">尚未掃描</span>
+    <span id="total-count">0 筆結果</span>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">關鍵字設定</div>
+      <div class="keyword-input-wrap">
+        <input class="keyword-input" id="kw-input" placeholder="新增關鍵字..." maxlength="20">
+        <button class="btn-add" onclick="addKeyword()">+</button>
+      </div>
+      <div class="keywords-list" id="keywords-list"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">監控平台</div>
+      <div class="platform-list" id="platform-list"></div>
+    </div>
+
+    <button class="btn-scan" id="scan-btn" onclick="startScan()">
+      <span>▶</span> 開始掃描
+    </button>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="stat-ptt">0</div>
+        <div class="stat-label">PTT</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="stat-dcard">0</div>
+        <div class="stat-label">Dcard</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="stat-reddit">0</div>
+        <div class="stat-label">Reddit</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feed -->
+  <div class="feed-wrap">
+    <div class="loading-bar" id="loading-bar"></div>
+    <div class="feed-header">
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="tab active" onclick="filterBy('all', this)">全部</button>
+        <button class="tab" onclick="filterBy('PTT', this)">PTT</button>
+        <button class="tab" onclick="filterBy('Dcard', this)">Dcard</button>
+        <button class="tab" onclick="filterBy('Reddit', this)">Reddit</button>
+        <button class="tab" onclick="filterBy('saved', this)">⭐ 已儲存</button>
+      </div>
+      <select class="sort-select" onchange="sortPosts(this.value)">
+        <option value="time">最新優先</option>
+        <option value="hits">命中數優先</option>
+      </select>
+    </div>
+    <div class="feed" id="feed">
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <div>設定關鍵字後<br>點擊開始掃描</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let keywords = ['韭菜','爆倉','虧損','套牢','割肉','歸零'];
+let platforms = {
+  PTT: { active: true, color: '#ff6b35', badge: 'badge-ptt' },
+  Dcard: { active: true, color: '#e84393', badge: 'badge-dcard' },
+  Reddit: { active: true, color: '#ff4500', badge: 'badge-reddit' },
+};
+let posts = [];
+let savedIds = new Set();
+let currentFilter = 'all';
+let currentSort = 'time';
+let scanning = false;
+
+// Mock data generator (實際部署時替換為真實 API 呼叫)
+const mockPosts = [
+  { id:1, platform:'PTT', board:'DigiCurrency', author:'leek_king', title:'今天又被割了，BTC一跌我就慌了直接停損', preview:'真的心態崩了，進場就跌，一賣就漲，我到底在幹嘛...', url:'https://www.ptt.cc/bbs/DigiCurrency/', time: Date.now()-300000, keywords:['韭菜','虧損'] },
+  { id:2, platform:'PTT', board:'Stock', author:'crypto_loser', title:'幣圈虧了50萬，回來炒股繼續虧', preview:'這兩年真的是人生最慘的時期，從幣圈到股市一路歸零...', url:'https://www.ptt.cc/bbs/Stock/', time: Date.now()-600000, keywords:['虧損','歸零'] },
+  { id:3, platform:'Dcard', board:'投資理財', author:'匿名', title:'爆倉了，人生第一次爆倉的感受', preview:'今天槓桿開太大，直接爆倉，損失了三個月薪水，很崩潰', url:'https://www.dcard.tw/f/money', time: Date.now()-900000, keywords:['爆倉'] },
+  { id:4, platform:'Dcard', board:'幣圈', author:'韭菜本菜', title:'套牢alt幣半年，要繼續等還是認賠？', preview:'當初買進價格現在跌了70%，不知道是要繼續hold還是直接割肉...', url:'https://www.dcard.tw/f/crypto', time: Date.now()-1200000, keywords:['套牢','割肉'] },
+  { id:5, platform:'Reddit', board:'r/CryptoCurrency', author:'sad_leek_tw', title:'Lost everything in this bull trap, need advice', preview:'Been holding since the peak, down 80%, considering giving up on crypto entirely...', url:'https://www.reddit.com/r/CryptoCurrency/', time: Date.now()-1800000, keywords:['虧損'] },
+  { id:6, platform:'PTT', board:'DigiCurrency', author:'hodler_pain', title:'幣圈韭菜四年心得：我學到的教訓', preview:'從2020年入場，歷經牛熊，虧過爆過套過，終於搞懂了一些道理...', url:'https://www.ptt.cc/bbs/DigiCurrency/', time: Date.now()-2400000, keywords:['韭菜','虧損','爆倉'] },
+];
+
+function renderKeywords() {
+  const el = document.getElementById('keywords-list');
+  el.innerHTML = keywords.map(k => `
+    <div class="keyword-tag">
+      ${k}
+      <span class="remove" onclick="removeKeyword('${k}')">×</span>
+    </div>
+  `).join('');
+}
+
+function addKeyword() {
+  const input = document.getElementById('kw-input');
+  const val = input.value.trim();
+  if (val && !keywords.includes(val)) {
+    keywords.push(val);
+    renderKeywords();
+  }
+  input.value = '';
+  input.focus();
+}
+
+document.getElementById('kw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addKeyword();
+});
+
+function removeKeyword(k) {
+  keywords = keywords.filter(x => x !== k);
+  renderKeywords();
+}
+
+function renderPlatforms() {
+  const el = document.getElementById('platform-list');
+  el.innerHTML = Object.entries(platforms).map(([name, p]) => `
+    <div class="platform-item ${p.active ? 'active' : ''}" onclick="togglePlatform('${name}')">
+      <div class="platform-name">
+        <div class="platform-dot" style="background:${p.color}"></div>
+        ${name}
+      </div>
+      <div class="toggle ${p.active ? 'on' : ''}"></div>
+    </div>
+  `).join('');
+}
+
+function togglePlatform(name) {
+  platforms[name].active = !platforms[name].active;
+  renderPlatforms();
+}
+
+async function startScan() {
+  if (scanning) return;
+  if (!keywords.length) { alert('請先新增關鍵字'); return; }
+  scanning = true;
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.classList.add('scanning');
+  btn.innerHTML = '<span>⟳</span> 掃描中...';
+  document.getElementById('loading-bar').classList.add('active');
+
+  const activePlatforms = Object.entries(platforms).filter(([,p]) => p.active).map(([n]) => n);
+
+  try {
+    await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords, platforms: activePlatforms })
+    });
+    await pollUntilDone();
+  } catch(e) {
+    alert('掃描失敗，請重試');
+  } finally {
+    scanning = false;
+    btn.disabled = false;
+    btn.classList.remove('scanning');
+    btn.innerHTML = '<span>▶</span> 重新掃描';
+    document.getElementById('loading-bar').classList.remove('active');
+  }
+}
+
+async function pollUntilDone() {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    const res = await fetch('/api/status');
+    const status = await res.json();
+    if (!status.scanning) { await loadResults(); return; }
+  }
+  alert('掃描逾時，請重試');
+}
+
+async function loadResults() {
+  const res = await fetch('/api/results');
+  const data = await res.json();
+  posts = (data.results || []).map(p => ({ ...p, matchedKeywords: p.matched_keywords || [] }));
+  ['PTT','Dcard','Reddit'].forEach(name => {
+    document.getElementById(`stat-${name.toLowerCase()}`).textContent =
+      posts.filter(p => p.platform === name).length;
+  });
+  document.getElementById('total-count').textContent = `${posts.length} 筆結果`;
+  if (data.last_scan) document.getElementById('last-scan').textContent = '剛剛掃描';
+  renderFeed();
+}
+
+function filterBy(val, el) {
+  currentFilter = val;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderFeed();
+}
+
+function sortPosts(val) {
+  currentSort = val;
+  renderFeed();
+}
+
+function toggleSave(id, btn) {
+  if (savedIds.has(id)) { savedIds.delete(id); btn.classList.remove('saved'); btn.textContent = '☆'; }
+  else { savedIds.add(id); btn.classList.add('saved'); btn.textContent = '⭐'; }
+  if (currentFilter === 'saved') renderFeed();
+}
+
+function renderFeed() {
+  const feed = document.getElementById('feed');
+
+  let filtered = [...posts];
+  if (currentFilter === 'saved') filtered = filtered.filter(p => savedIds.has(p.id));
+  else if (currentFilter !== 'all') filtered = filtered.filter(p => p.platform === currentFilter);
+
+  if (currentSort === 'time') filtered.sort((a,b) => b.time - a.time);
+  else filtered.sort((a,b) => b.matchedKeywords.length - a.matchedKeywords.length);
+
+  if (!filtered.length) {
+    feed.innerHTML = `<div class="empty-state"><div class="empty-icon">${posts.length ? '🔍' : '📡'}</div><div>${posts.length ? '此分類無結果' : '設定關鍵字後<br>點擊開始掃描'}</div></div>`;
+    return;
+  }
+
+  const timeAgo = t => {
+    const d = Date.now() - t;
+    if (d < 60000) return '剛剛';
+    if (d < 3600000) return `${Math.floor(d/60000)} 分鐘前`;
+    if (d < 86400000) return `${Math.floor(d/3600000)} 小時前`;
+    return `${Math.floor(d/86400000)} 天前`;
+  };
+
+  feed.innerHTML = filtered.map(p => `
+    <div class="post-card" onclick="window.open('${p.url}','_blank')">
+      <div class="post-meta">
+        <span class="platform-badge ${platforms[p.platform].badge}">${p.platform}</span>
+        <span class="post-author">${p.board || ''} · ${p.author}</span>
+        <span class="post-time">${timeAgo(p.time)}</span>
+      </div>
+      <div class="post-title">${p.title}</div>
+      <div class="post-preview">${p.preview}</div>
+      <div class="post-footer">
+        <div class="keyword-hits">
+          ${p.matchedKeywords.map(k => `<span class="hit-tag">${k}</span>`).join('')}
+        </div>
+        <button class="btn-save ${savedIds.has(p.id)?'saved':''}" onclick="event.stopPropagation();toggleSave(${p.id},this)">${savedIds.has(p.id)?'⭐':'☆'}</button>
+        <a class="btn-open" href="${p.url}" target="_blank" onclick="event.stopPropagation()">開啟原文 →</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Init
+renderKeywords();
+renderPlatforms();
+</script>
+</body>
+</html>
