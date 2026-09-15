@@ -1,0 +1,232 @@
+/* Shared style tokens for all 5 themes (spec section 5 & 7).
+   --color-* are overridden per-theme at runtime by theme/applyTheme.js;
+   the values below are just a fallback so the page isn't unstyled before
+   that runs. */
+:root {
+  --color-primary: #6b7fa3;
+  --color-accent: #3f4f6b;
+  --color-bg: #f4f1ea;
+  --color-text: #2b2b2b;
+  --font-hand: 'Kalam', 'Patrick Hand', cursive;
+  --font-body: 'Patrick Hand', 'Kalam', cursive;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.site {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+.section-title {
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  text-align: center;
+  margin: 48px 0 24px;
+}
+
+/* Hand-drawn wobbly border, used on buttons, cards and frames instead of
+   clean rounded rectangles. */
+.hand-border {
+  border: 3px solid var(--color-text);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+}
+
+.btn {
+  display: inline-block;
+  font-family: var(--font-hand);
+  font-size: 1rem;
+  padding: 10px 22px;
+  background: #fff;
+  color: var(--color-text);
+  border: 3px solid var(--color-text);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: rotate(-1deg) scale(1.03);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+/* Header */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+}
+
+.logo {
+  font-family: var(--font-hand);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 20px 0 12px;
+}
+
+.hero-visual {
+  max-width: 320px;
+  margin: 0 auto 16px;
+}
+
+.hero-image {
+  width: 100%;
+  display: block;
+  border: 3px solid var(--color-text);
+  border-radius: 225px 15px 255px 15px / 15px 255px 15px 225px;
+  transform: rotate(-1deg);
+}
+
+.hero-slogan {
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  max-width: 480px;
+  margin: 0 auto 20px;
+}
+
+.hero-cta {
+  margin-top: 8px;
+}
+
+/* Draw section */
+.draw-section {
+  text-align: center;
+}
+
+.draw-button {
+  font-size: 1.2rem;
+  padding: 16px 32px;
+}
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.result-image-frame {
+  width: min(100%, 360px);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--color-text);
+  border-radius: 225px 15px 255px 15px / 15px 255px 15px 225px;
+  overflow: hidden;
+  background: #fff;
+  transition: opacity 0.3s ease;
+}
+
+.result-image-frame.is-loading {
+  opacity: 0.5;
+}
+
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.result-loading {
+  font-size: 2.5rem;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.result-hint {
+  font-size: 0.95rem;
+  color: var(--color-accent);
+}
+
+.result-hint-error {
+  color: #a33;
+}
+
+/* Buy section */
+.buy-section {
+  text-align: center;
+}
+
+.ca-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ca-value {
+  font-family: monospace;
+  font-size: 0.95rem;
+  background: #fff;
+  border: 2px dashed var(--color-text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+/* Footer */
+.site-footer {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 48px;
+  font-family: var(--font-hand);
+}
+
+.site-footer a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--color-primary);
+}

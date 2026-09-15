@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.env.local
+raw-uploads/*/*.png
+raw-uploads/*/*.jpg
+raw-uploads/*/*.jpeg
+!raw-uploads/**/.gitkeep
